@@ -1,7 +1,7 @@
 const core = require('@actions/core');
 const assert = require('assert');
 const aws = require('aws-sdk');
-const run = require('.');
+const run = require('./index.js');
 
 jest.mock('@actions/core');
 
@@ -22,8 +22,8 @@ const ENVIRONMENT_VARIABLE_OVERRIDES = {
     GITHUB_WORKFLOW: 'MY-WORKFLOW-ID',
     GITHUB_ACTION: 'MY-ACTION-NAME',
     GITHUB_ACTOR: 'MY-USERNAME[bot]',
-    GITHUB_REF: 'MY-BRANCH',
     GITHUB_SHA: 'MY-COMMIT-ID',
+    GITHUB_REF: 'MY-BRANCH',
 };
 const GITHUB_ACTOR_SANITIZED = 'MY-USERNAME_bot_'
 
@@ -140,6 +140,26 @@ describe('Configure AWS Credentials', () => {
         expect(core.exportVariable).toHaveBeenCalledWith('AWS_REGION', FAKE_REGION);
         expect(core.setOutput).toHaveBeenCalledWith('aws-account-id', FAKE_ACCOUNT_ID);
         expect(core.setSecret).toHaveBeenCalledWith(FAKE_ACCOUNT_ID);
+    });
+
+    test('action fails when github env vars are not set', async () => {
+        process.env.SHOW_STACK_TRACE = 'false';
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
+        delete process.env.GITHUB_SHA;
+
+        await run();
+        expect(core.setFailed).toHaveBeenCalledWith('Missing required environment value. Are you running in GitHub Actions?');
+    });
+
+    test('action does not require GITHUB_REF env var', async () => {
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
+        delete process.env.GITHUB_REF;
+
+        await run();
     });
 
     test('hosted runners can pull creds from a self-hosted environment', async () => {
@@ -415,8 +435,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -437,8 +457,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -459,8 +479,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -481,8 +501,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -503,8 +523,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ],
             ExternalId: 'abcdef'
         })
@@ -530,8 +550,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: sanitizedWorkflowName},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -566,8 +586,8 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
     });
@@ -588,10 +608,32 @@ describe('Configure AWS Credentials', () => {
                 {Key: 'Workflow', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_WORKFLOW},
                 {Key: 'Action', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_ACTION},
                 {Key: 'Actor', Value: GITHUB_ACTOR_SANITIZED},
-                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
                 {Key: 'Commit', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_SHA},
+                {Key: 'Branch', Value: ENVIRONMENT_VARIABLE_OVERRIDES.GITHUB_REF},
             ]
         })
+    });
+
+    test('masks variables before exporting', async () => {
+        let maskedValues = [];
+        const publicFields = ['AWS_REGION', 'AWS_DEFAULT_REGION'];
+        core.setSecret.mockReset();
+        core.setSecret.mockImplementation((secret) => {
+            maskedValues.push(secret);
+        });
+
+        core.exportVariable.mockReset();
+        core.exportVariable.mockImplementation((name, value) => {
+            if (!maskedValues.includes(value) && !publicFields.includes(name)) {
+                throw new Error(value + " for variable " + name + " is not masked yet!");
+            }
+        });
+
+        core.getInput = jest
+            .fn()
+            .mockImplementation(mockGetInput(ASSUME_ROLE_INPUTS));
+
+        await run();
     });
 
 });

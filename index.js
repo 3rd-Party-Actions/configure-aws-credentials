@@ -29,9 +29,9 @@ async function assumeRole(params) {
       "Missing required input when assuming a Role."
   );
 
-  const {GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA} = process.env;
+  const {GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_SHA} = process.env;
   assert(
-      [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_REF, GITHUB_SHA].every(isDefined),
+      [GITHUB_REPOSITORY, GITHUB_WORKFLOW, GITHUB_ACTION, GITHUB_ACTOR, GITHUB_SHA].every(isDefined),
       'Missing required environment value. Are you running in GitHub Actions?'
   );
 
@@ -48,9 +48,12 @@ async function assumeRole(params) {
     {Key: 'Workflow', Value: sanitizeGithubWorkflowName(GITHUB_WORKFLOW)},
     {Key: 'Action', Value: GITHUB_ACTION},
     {Key: 'Actor', Value: sanitizeGithubActor(GITHUB_ACTOR)},
-    {Key: 'Branch', Value: GITHUB_REF},
     {Key: 'Commit', Value: GITHUB_SHA},
   ];
+
+  if (isDefined(process.env.GITHUB_REF)) {
+    tagArray.push({Key: 'Branch', Value: process.env.GITHUB_REF});
+  }
 
   const roleSessionTags = roleSkipSessionTagging ? undefined : tagArray;
 
@@ -98,19 +101,19 @@ function exportCredentials(params){
 
   // AWS_ACCESS_KEY_ID:
   // Specifies an AWS access key associated with an IAM user or role
-  core.exportVariable('AWS_ACCESS_KEY_ID', accessKeyId);
   core.setSecret(accessKeyId);
+  core.exportVariable('AWS_ACCESS_KEY_ID', accessKeyId);
 
   // AWS_SECRET_ACCESS_KEY:
   // Specifies the secret key associated with the access key. This is essentially the "password" for the access key.
-  core.exportVariable('AWS_SECRET_ACCESS_KEY', secretAccessKey);
   core.setSecret(secretAccessKey);
+  core.exportVariable('AWS_SECRET_ACCESS_KEY', secretAccessKey);
 
   // AWS_SESSION_TOKEN:
   // Specifies the session token value that is required if you are using temporary security credentials.
   if (sessionToken) {
-    core.exportVariable('AWS_SESSION_TOKEN', sessionToken);
     core.setSecret(sessionToken);
+    core.exportVariable('AWS_SESSION_TOKEN', sessionToken);
   } else if (process.env.AWS_SESSION_TOKEN) {
     // clear session token from previous credentials action
     core.exportVariable('AWS_SESSION_TOKEN', '');
@@ -129,10 +132,10 @@ async function exportAccountId(maskAccountId, region) {
   const sts = getStsClient(region);
   const identity = await sts.getCallerIdentity().promise();
   const accountId = identity.Account;
-  core.setOutput('aws-account-id', accountId);
   if (!maskAccountId || maskAccountId.toLowerCase() == 'true') {
     core.setSecret(accountId);
   }
+  core.setOutput('aws-account-id', accountId);
   return accountId;
 }
 
